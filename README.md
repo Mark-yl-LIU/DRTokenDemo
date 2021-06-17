@@ -140,3 +140,34 @@ You should extend this template as follows:
 
 For a guided example of how to extend this template, see the Hello, World! tutorial 
 [here](https://docs.corda.net/hello-world-introduction.html).
+
+
+# Build the CorApp for Depositary Receipt Tokenize
+
+1. Introduce the Corda App for 8 Nodes for: 
+    - Notary, 
+    - Orcale-FX,
+    - Orcale-Stock,
+    - Broker1, 
+    - Broker2, 
+    - Custody in Location 1,
+    - Custody in Location 2,
+    - Investor
+
+2. Introduce the Fungible Token for raise the DR by Custody 
+
+3. Introduce the `Orcale-FX` for the Token link with FX Rate 
+
+   `PoC that's GBP vs CNY` 
+
+4. Introduce the `Orcale-Stock` for the Token link with Stock Price 
+   
+`PoC take one China Stock like Ping An Insurance for example`
+
+5. Raise a GDR Token by Investor in London `Broker1` 
+
+6. Cancel a GDR Token on London `Broker1`
+
+7. Trigger the GDR Raise process from `Investor`
+
+8. Trigger the GDR Cancel process for `Investor`
