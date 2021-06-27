@@ -1,15 +1,17 @@
 apply plugin: 'net.corda.plugins.cordapp'
+apply plugin: 'net.corda.plugins.cordformation'
 apply plugin: 'net.corda.plugins.quasar-utils'
 
 cordapp {
     targetPlatformVersion corda_platform_version
     minimumPlatformVersion corda_platform_version
     workflow {
-        name "Template Flows"
+        name "DR Token Flows"
         vendor "Corda Open Source"
         licence "Apache License, Version 2.0"
         versionId 1
     }
+
 }
 
 sourceSets {
@@ -49,6 +51,13 @@ dependencies {
 
     // CorDapp dependencies.
     cordapp project(":contracts")
+
+    // Token SDK dependencies.
+    cordaCompile "$tokens_release_group:tokens-workflows:$tokens_release_version"
+    cordapp "$confidential_id_release_group:ci-workflows:$confidential_id_release_version"
+
+    // Workflow Load the file default FX Rate and Share Price
+    compile "commons-io:commons-io:$commons_io_version"
 }
 
 task integrationTest(type: Test, dependsOn: []) {

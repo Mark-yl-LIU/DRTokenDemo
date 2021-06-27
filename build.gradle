@@ -11,6 +11,9 @@ buildscript { //properties that you need to build the project
 
     ext {
 
+        ext.rxjava_version = '1.3.8'
+        ext.commons_io_version = '2.6'
+
         //Corda Core
         corda_release_group = constants.getProperty("cordaReleaseGroup")
         corda_core_release_group =  constants.getProperty("cordaCoreReleaseGroup")
@@ -111,10 +114,15 @@ sourceSets {
 dependencies {
     // Corda dependencies.
     cordaCompile "$corda_core_release_group:corda-core:$corda_core_release_version"
+    cordaCompile "$corda_release_group:corda-node-api:$corda_release_version"
+    cordaCompile "$corda_release_group:corda-finance-contracts:$corda_release_version"
+    cordaCompile "$corda_release_group:corda-finance-workflows:$corda_release_version"
     cordaRuntime "$corda_release_group:corda-node-api:$corda_release_version"
     cordaRuntime "$corda_release_group:corda:$corda_release_version"
 
     // CorDapp dependencies.
+    cordapp("$corda_release_group:corda-finance-workflows:$corda_release_version")
+    cordapp("$corda_release_group:corda-finance-contracts:$corda_release_version")
     cordapp project(":workflows")
     cordapp project(":contracts")
 
@@ -122,8 +130,9 @@ dependencies {
     cordapp "$confidential_id_release_group:ci-workflows:$confidential_id_release_version"
     cordapp "$tokens_release_group:tokens-contracts:$tokens_release_version"
     cordapp "$tokens_release_group:tokens-workflows:$tokens_release_version"
-    cordapp "$tokens_release_group:tokens-money:$tokens_release_version"
-    cordapp "$tokens_release_group:tokens-selection:$tokens_release_version"
+//  Comment out as 1.2 already put money jar to workflow directly also the selection
+//    cordapp "$tokens_release_group:tokens-money:$tokens_release_version"
+//    cordapp "$tokens_release_group:tokens-selection:$tokens_release_version"
     cordapp "$accounts_release_group:accounts-contracts:$accounts_release_version"
     cordapp "$accounts_release_group:accounts-workflows:$accounts_release_version"
 
@@ -151,8 +160,9 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         cordapp "$confidential_id_release_group:ci-workflows:$confidential_id_release_version"
         cordapp "$tokens_release_group:tokens-contracts:$tokens_release_version"
         cordapp "$tokens_release_group:tokens-workflows:$tokens_release_version"
-        cordapp "$tokens_release_group:tokens-money:$tokens_release_version"
-        cordapp "$tokens_release_group:tokens-selection:$tokens_release_version"
+//Remove the Money and selection as that move to tokens-workflow part
+//        cordapp "$tokens_release_group:tokens-money:$tokens_release_version"
+//        cordapp "$tokens_release_group:tokens-selection:$tokens_release_version"
         cordapp "$accounts_release_group:accounts-contracts:$accounts_release_version"
         cordapp "$accounts_release_group:accounts-workflows:$accounts_release_version"
 
@@ -175,7 +185,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
 
     //DR Broker1
     node {
-        name "O=Broker1,L=London,C=GB"
+        name "O=Broker1,L=London,C=GB,CN=DR_Broker"
         p2pPort 10005
         rpcSettings {
             address("localhost:10006")
@@ -230,7 +240,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
 
     //Local Depositary
     node {
-        name "O=Depositary Bank,L=London,C=GB"
+        name "O=Depositary,L=London,C=GB"
         p2pPort 10020
         rpcSettings {
             address("localhost:10021")

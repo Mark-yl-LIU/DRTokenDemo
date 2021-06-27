@@ -154,6 +154,7 @@ For a guided example of how to extend this template, see the Hello, World! tutor
     - Custody in Location 2,
     - Investor
 
+
 2. Introduce the Fungible Token for raise the DR by Custody 
 
 3. Introduce the `Orcale-FX` for the Token link with FX Rate 

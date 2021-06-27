@@ -1,0 +1,6 @@
+# Some pretend noddy rate fixes, for the interest rate oracles.
+
+GBP:CNY:9.0261
+CNY:GBP:0.1107
+
+# Previous fixings
