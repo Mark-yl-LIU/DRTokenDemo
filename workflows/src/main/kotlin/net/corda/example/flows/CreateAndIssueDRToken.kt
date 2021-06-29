@@ -43,14 +43,17 @@ class CreateAndIssueDRToken(   val Local_Custody: Party,
         val uuid = fromString(UUID.randomUUID().toString())
         val DRState = DRTokenState(
             uuid,
-            Arrays.asList(Deposit),
+            listOf(Deposit,Local_Custody),
             Local_Custody,
             Deposit,
             FX_Rate,
             Ord_Price,
             Toekn_Price,
             Ord_Rate,
-            Ord_Isin)
+            Ord_Isin,
+            issuer,
+            0
+        )
 
         /* Create an instance of TransactionState using the DRState token and the notary */
         val transactionState = DRState withNotary notary
@@ -75,7 +78,7 @@ class CreateAndIssueDRToken(   val Local_Custody: Party,
         /* Issue the DR token by calling the IssueTokens flow provided with the TokenSDK */
         val stx = subFlow(IssueTokens(listOf(drtoken)))
 
-        return ("\nThe fungible DR token is created with UUID: " + DRState.linearId + " from Deposit: "+ Deposit.name.toString() + ". And"
+        return ("\nThe fungible DR token are created with UUID: " + DRState.linearId + " from Deposit: "+ Deposit.name.toString() + ". And"
                 + "\nTransaction ID: " + stx.id)
     }
 }

@@ -37,7 +37,7 @@ class CreateAndIssueStock(val ISIN: String,
 //        val observers: List<Party> = getObserverLegalIdenties(identityService)!!
 
         // Construct the output StockState
-        val shareState = ShareState( ISIN,price,UniqueIdentifier(),2,listOf(Oracle_Market))
+        val shareState = ShareState( ISIN,price,UniqueIdentifier(),0,listOf(Oracle_Market))
 
         // The notary provided here will be used in all future actions of this token
         val transactionState = shareState withNotary notary
@@ -59,7 +59,7 @@ class CreateAndIssueStock(val ISIN: String,
         val stx = subFlow(IssueTokens(listOf(shareToken)))
 
         return ("\nGenerated " + issueVol + " " + ISIN + " stocks with price: "
-                + price + "\n as Token with Token ID: " + shareState.linearId + ". Enjoy!")
+                + price + "\n as Token with Token UUID: " + shareState.linearId + ". Enjoy!")
     }
 //
 //    fun getObserverLegalIdenties(identityService: IdentityService): List<Party>? {

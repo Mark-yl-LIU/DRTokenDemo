@@ -16,7 +16,7 @@ import java.util.*
 data class ShareState(val symbol: String,
                       val price: Amount<Currency>,
                       override val linearId: UniqueIdentifier,
-                      override val fractionDigits: Int = 2,
+                      override val fractionDigits: Int = 0,
                       override val maintainers: List<Party>) : EvolvableTokenType(), StatePersistable
 {
     override fun toString() = "The Share<$symbol> price is $price."

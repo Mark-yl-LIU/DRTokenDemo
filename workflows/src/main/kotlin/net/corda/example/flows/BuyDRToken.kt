@@ -2,19 +2,30 @@ package net.corda.example.flows
 
 import co.paralleluniverse.fibers.Suspendable
 import com.r3.corda.lib.tokens.contracts.states.FungibleToken
+import com.r3.corda.lib.tokens.contracts.types.TokenPointer
 import com.r3.corda.lib.tokens.selection.database.selector.DatabaseTokenSelection
 import com.r3.corda.lib.tokens.workflows.flows.move.addMoveTokens
 import com.r3.corda.lib.tokens.workflows.internal.flows.distribution.UpdateDistributionListFlow
 import com.r3.corda.lib.tokens.workflows.types.PartyAndAmount
+import com.r3.corda.lib.tokens.contracts.types.TokenType
+import com.r3.corda.lib.tokens.workflows.flows.move.addMoveFungibleTokens
+import com.r3.corda.lib.tokens.workflows.flows.rpc.MoveFungibleTokens
+import com.r3.corda.lib.tokens.workflows.flows.rpc.MoveFungibleTokensHandler
 import net.corda.core.contracts.Amount
 import net.corda.core.contracts.StateAndRef
+import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
+import net.corda.core.node.services.queryBy
+import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.unwrap
-
+import net.corda.example.states.DRTokenState
+import net.corda.example.states.ShareState
+import java.math.BigDecimal
+import java.util.*
 
 
 //For DR Token Issue
@@ -47,7 +58,6 @@ class BuyDRToken(
         object QUERYING_SIGNED_FX_ORACLE : ProgressTracker.Step("Querying oracle for the FX Price.")
         object BUILDING_THE_TX : ProgressTracker.Step("Building transaction.")
         object WE_SIGN : ProgressTracker.Step("signing transaction.")
-        object ORACLES_SIGNS : ProgressTracker.Step("Requesting oracle signature.")
         object FINALISING : ProgressTracker.Step("Finalising transaction.") {
             override fun childProgressTracker() = FinalityFlow.tracker()
         }
@@ -74,15 +84,16 @@ class BuyDRToken(
 
         progressTracker.currentStep = QUERYING_SIGNED_SHARE_ORACLE
 
-        val getshareresult = subFlow(GetSharePrice(Ord_Share_Symbol))
-
+//        val getshareresult = subFlow(GetSharePrice(Ord_Share_Symbol))
+        println("Get Share Price")
         val ShareoracleName = Orcal_Market.name
         val Shareoracle = serviceHub.networkMapCache.getNodeByLegalName(ShareoracleName)?.legalIdentities?.first()
             ?: throw IllegalArgumentException("Requested oracle $ShareoracleName not found on network.")
         val sharepriceRequestedFromOracle = subFlow(QuerySharePrice(Shareoracle, Ord_Share_Symbol))
+        println(sharepriceRequestedFromOracle)
 
         progressTracker.currentStep = QUERYING_SIGNED_FX_ORACLE
-
+        println("Get FX Rate")
         val getFXresult = subFlow(GetFXPairRate("GBP","CNY"))
 
         val FXoracleName = Orcal_FX.name
@@ -90,95 +101,67 @@ class BuyDRToken(
             ?: throw IllegalArgumentException("Requested oracle $FXoracleName not found on network.")
         //Normally fetch currency from Local Broker / DR broker to get currecny pair
         //Here just simplify the case.
-        val fxRateRequestedFromOracle = subFlow(QueryFxRate(FXoracle, listOf("CNY", "GBP")))
+        val fxRateRequestedFromOracle = subFlow(QueryFxRate(FXoracle, listOf("GBP", "CNY")))
 
 
-        /* Create a move token proposal for the DR token using the helper function provided by Token SDK. This would create the movement proposal and would
-         * be committed in the ledgers of parties once the transaction in finalized.
-        **/
+        // Calculate the Ord Share Value
+        val ordQuantity = DR_quantity * Ord_Share_Rate
+        println(ordQuantity)
+        val divfx = 1/ fxRateRequestedFromOracle
+        println(divfx)
 
+        val FXcalQ= BigDecimal(sharepriceRequestedFromOracle.quantity) * BigDecimal(Ord_Share_Rate) / BigDecimal(fxRateRequestedFromOracle)
+        val FXcalround = FXcalQ.setScale(0,	BigDecimal.ROUND_FLOOR).toLong()
+        val TokenPrice = Amount(FXcalround , Currency.getInstance("GBP"))
+        println(TokenPrice)
+        println("Create DR Token")
+        val dRTokenCreated = subFlow(CreateAndIssueDRToken(Local_Bank,DepositBank,fxRateRequestedFromOracle.toBigDecimal(),sharepriceRequestedFromOracle,TokenPrice,Ord_Share_Rate,Ord_Share_Symbol,DR_quantity))
+        println(dRTokenCreated)
 
-        /* Initiate a flow session with the Investor to send the DR valuation and transfer of the fiat currency to DR Broker */
-        val investorSession = initiateFlow(Local_Bank)
+        println("Get DR Token ID")
+        val subStr = dRTokenCreated.indexOf("UUID: ");
+        val drFungiableTokenID = dRTokenCreated.substring(subStr + 6, dRTokenCreated.indexOf(" from"))
 
         /* Build the transaction builder */
         progressTracker.currentStep = BUILDING_THE_TX
 
-        val txBuilder = TransactionBuilder(notary)
+        /* Create a move token proposal for the DR token using the helper function provided by Token SDK. This would create the movement proposal and would
+         * be committed in the ledgers of parties once the transaction in finalized.
+        **/
+        //Handling Move Ord Share Quantity
 
-        // Calculate the Ord Share Value
-        val ordQuantity = DR_quantity * Ord_Share_Rate
-        val divfx = 1/ fxRateRequestedFromOracle
+        val stateAndRef = serviceHub.vaultService.queryBy<ShareState>()
+            .states.filter { it.state.data.symbol.equals(Ord_Share_Symbol) }[0]
 
-        var TokenPrice = Amount.parseCurrency("1 GBP")
-        if (fxRateRequestedFromOracle >1) {
-            TokenPrice = sharepriceRequestedFromOracle.times(Ord_Share_Rate).times(fxRateRequestedFromOracle.toLong())
-        }
-        else {
-            TokenPrice = sharepriceRequestedFromOracle.times(Ord_Share_Rate).splitEvenly(divfx.toInt())[0]
-        }
+        val evolvableTokenType = stateAndRef.state.data
 
-        val dRTokenCreated = subFlow(CreateAndIssueDRToken(Local_Bank,DepositBank,fxRateRequestedFromOracle.toBigDecimal(),sharepriceRequestedFromOracle,TokenPrice,Ord_Share_Rate,Ord_Share_Symbol,DR_quantity))
+        val tokenPointer: TokenPointer<ShareState> = evolvableTokenType.toPointer(evolvableTokenType.javaClass)
 
-        investorSession.send(ordQuantity)
-
-        val subString = dRTokenCreated.indexOf("UUID: ");
-        val DRfungibleTokenId = dRTokenCreated.substring(subString + 6, dRTokenCreated.indexOf(" from"))
-
-        val inputs = subFlow(ReceiveStateAndRefFlow<FungibleToken>(investorSession))
-
-        val moneyReceived: List<FungibleToken> = investorSession.receive<List<FungibleToken>>().unwrap { it -> it}
-
-        /* Create a fiat currency proposal for the DR token using the helper function provided by Token SDK. */
-        addMoveTokens(txBuilder, inputs, moneyReceived)
+        val amount:Amount<TokenType> = Amount(ordQuantity,tokenPointer)
 
         progressTracker.currentStep = WE_SIGN
-        /* Sign the transaction with your private */
-        val initialSignedTrnx = serviceHub.signInitialTransaction(txBuilder)
-
-        /* Call the CollectSignaturesFlow to recieve signature of the buyer */
-        val ftx= subFlow(CollectSignaturesFlow(initialSignedTrnx, listOf(investorSession)))
-
         /* Call finality flow to notarise the transaction */
-        val stx = subFlow(FinalityFlow(ftx, listOf(investorSession)))
+//        val stx = subFlow(FinalityFlow(ftx, listOf(localBankSession)))
 
+        val stx = subFlow(MoveFungibleTokens(amount,DepositBank))
+
+        println("Moved $ordQuantity $Ord_Share_Symbol token(s) to ${DepositBank.name.organisation}"+"\ntxId: ${stx.id}")
         /* Distribution list is a list of identities that should receive updates. For this mechanism to behave correctly we call the UpdateDistributionListFlow flow */
+
+        progressTracker.currentStep = FINALISING
+
         subFlow(UpdateDistributionListFlow(stx))
 
-        return ("\nThe DRToken UUID: "+  DRfungibleTokenId  +" is sold to " + DR_Broker.name.organisation + "\nTransaction ID: "
+        return ("\nThe DRToken UUID: "+  drFungiableTokenID  +" is Raised " + DR_Broker.name.organisation + "\nTransaction ID: "
                 + stx.id)
     }
 }
 
 
 @InitiatedBy(BuyDRToken::class)
-class BuyDRTokenResponder(val counterpartySession: FlowSession) : FlowLogic<SignedTransaction>() {
+class BuyDRTokenResponder(val counterpartySession: FlowSession) : FlowLogic<Unit>() {
     @Suspendable
-    override fun call():SignedTransaction {
-        /* Recieve the valuation of the DR */
-        val price = counterpartySession.receive<List<FungibleToken>>().unwrap { it }
-
-//        /* Create instance of the fiat currecy token amount */
-        val priceToken = Amount(price.size.toLong(), price[0].tokenType)
-        /*
-        *  Generate the move proposal, it returns the input-output pair for the fiat currency transfer, which we need to send to the Initiator.
-        * */
-        val partyAndAmount = PartyAndAmount(counterpartySession.counterparty,priceToken)
-        val inputsAndOutputs : Pair<List<StateAndRef<FungibleToken>>, List<FungibleToken>> =
-            DatabaseTokenSelection(serviceHub).generateMove(listOf(Pair(counterpartySession.counterparty,priceToken)),ourIdentity)
-        //.generateMove(runId.uuid, listOf(partyAndAmount),ourIdentity,null)
-
-        /* Call SendStateAndRefFlow to send the inputs to the Initiator*/
-        subFlow(SendStateAndRefFlow(counterpartySession, inputsAndOutputs.first))
-        /* Send the output generated from the fiat currency move proposal to the initiator */
-        counterpartySession.send(inputsAndOutputs.second)
-
-        //signing
-        subFlow(object : SignTransactionFlow(counterpartySession) {
-            @Throws(FlowException::class)
-            override fun checkTransaction(stx: SignedTransaction) { // Custom Logic to validate transaction.
-            }
-        })
-        return subFlow(ReceiveFinalityFlow(counterpartySession))
+    override fun call() {
+        return subFlow(MoveFungibleTokensHandler(counterpartySession))
     }
 }

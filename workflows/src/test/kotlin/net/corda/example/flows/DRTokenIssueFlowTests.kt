@@ -16,6 +16,7 @@ import java.util.*
 import java.util.concurrent.Future
 import kotlin.test.assertEquals
 import java.math.BigDecimal
+import com.r3.corda.lib.tokens.contracts.FungibleTokenContract
 
 // Test Flows
 import net.corda.example.states.DRTokenState
@@ -70,6 +71,7 @@ class DRTokenIssueFlowTests {
         val (linearId) = storedFungibleTokenb[0].state.data
         println("-$linearId-")
         assertEquals(linearId.toString(), DRfungibleTokenId)
+        println(Nodeb!!.services.vaultService.queryBy(DRTokenState::class.java))
     }
 }
 

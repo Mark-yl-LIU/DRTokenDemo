@@ -24,6 +24,6 @@ data class DRTokenState(override val linearId: UniqueIdentifier,
                         val toekn_ordshare_rate: Long,
                         val ord_share_isin: String,
                         val issuer: Party = maintainers.single(),
-                        override val fractionDigits: Int = 2
+                        override val fractionDigits: Int = 0
 ):EvolvableTokenType()
 

@@ -24,7 +24,7 @@ import net.corda.example.states.DRTokenState
 import net.corda.example.states.ShareState
 
 
-class BuyDRTokenTest {
+class FXExchangeTest {
     private var network: MockNetwork? = null
     private var NodeDRBroker: StartedMockNode? = null
     private var NodeLcoalBank: StartedMockNode? = null
@@ -62,42 +62,38 @@ class BuyDRTokenTest {
     }
 
     @Test
-    fun DRTokenStateCreation() {
+    fun FXExchangeCreation() {
 
-        //put share into Local Custody
-        val createAndIssueFlow = CreateAndIssueStock(
-            "CNE000001R84",
-            Amount.parseCurrency("67.56 CNY"),
-            4000,
-            NodeLcoalBank!!.info.legalIdentities[0])
-        val future1: Future<String> = NodeLcoalBank!!.startFlow(createAndIssueFlow)
+        //put money into Local Custody
+        val fiatCurrencyIssueFlow1 = FiatCurrencyIssueFlow("CNY",400000,NodeDRBank!!.info.legalIdentities[0])
+        val result1:Future<String> = NodeDRBank!!.startFlow(fiatCurrencyIssueFlow1)
         network!!.runNetwork()
-        val resultString1 = future1.get()
+        val resultString1 = result1.get()
         println(resultString1)
 
-        //Buy DR Token
-        val buyDRTokenFlow = BuyDRToken(
-            NodeDRBroker!!.info.legalIdentities[0],NodeLcoalBank!!.info.legalIdentities[0],NodeDRBank!!.info.legalIdentities[0],Noded!!.info.legalIdentities[0],Nodee!!.info.legalIdentities[0],
-            "CNE000001R84",10,1)
-        val future: Future<String> = NodeLcoalBank!!.startFlow(buyDRTokenFlow)
+        //put money into DRBank
+        val fiatCurrencyIssueFlow2 = FiatCurrencyIssueFlow("GBP",400000,NodeLcoalBank!!.info.legalIdentities[0])
+        val result2:Future<String> = NodeLcoalBank!!.startFlow(fiatCurrencyIssueFlow2)
         network!!.runNetwork()
-        val resultString = future.get()
-        println(resultString)
-        val subString = resultString.indexOf("UUID: ");
-        val DRfungibleTokenId = resultString.substring(subString + 6, resultString.indexOf(" is Raised"))
-        println("-" + DRfungibleTokenId + "-")
-        val inputCriteria: QueryCriteria = LinearStateQueryCriteria().withUuid(Arrays.asList(UUID.fromString(DRfungibleTokenId))).withStatus(StateStatus.UNCONSUMED)
-        val storedFungibleTokenb = NodeDRBank!!.services.vaultService.queryBy(DRTokenState::class.java, inputCriteria).states
-        val (linearId) = storedFungibleTokenb[0].state.data
-        println("-$linearId-")
-        assertEquals(linearId.toString(), DRfungibleTokenId)
+        val resultString2 = result2.get()
+        println(resultString2)
 
-        val subString2 = resultString1.indexOf("Token ID: ");
-        val ShareTokenID = resultString1.substring(subString2 + 10, resultString1.indexOf(". Enjoy"))
-        println("-" + ShareTokenID + "-")
+        //Do the exchange
+        val fxexchangeflow1 = FXexchange(NodeDRBank!!.info.legalIdentities[0],NodeLcoalBank!!.info.legalIdentities[0],Noded!!.info.legalIdentities[0],
+            Amount.parseCurrency("5 GBP"),"CNY"
+        )
+        val result3:Future<String> = NodeLcoalBank!!.startFlow(fxexchangeflow1)
+        network!!.runNetwork()
+        val resultString3 = result3.get()
+        println(resultString3)
 
-        val storedFungibleTokenb4 = NodeDRBank!!.services.vaultService.queryBy(FungibleToken::class.java).states
+        val storedFungibleTokenb4 = NodeLcoalBank!!.services.vaultService.queryBy(FungibleToken::class.java).states
         println(storedFungibleTokenb4)
+
+        val storedFungibleTokenb5 = NodeDRBank!!.services.vaultService.queryBy(FungibleToken::class.java).states
+        println(storedFungibleTokenb5)
+
+
 
     }
 }
