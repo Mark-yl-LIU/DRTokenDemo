@@ -17,14 +17,15 @@ import java.util.*
 import java.util.concurrent.Future
 import kotlin.test.assertEquals
 import com.r3.corda.lib.tokens.contracts.states.FungibleToken
-import com.r3.corda.lib.tokens.contracts.states.EvolvableTokenType
+
 
 // Test Flows
 import net.corda.example.states.DRTokenState
 import net.corda.example.states.ShareState
+import java.math.BigDecimal
 
 
-class FXExchangeTest {
+class MoveDRTokenTest {
     private var network: MockNetwork? = null
     private var NodeDRBroker: StartedMockNode? = null
     private var NodeLcoalBank: StartedMockNode? = null
@@ -62,38 +63,31 @@ class FXExchangeTest {
     }
 
     @Test
-    fun FXExchangeCreation() {
+    fun DRTokenStateMovementTest() {
 
-        //put money into Local Custody
-        val fiatCurrencyIssueFlow1 = FiatCurrencyIssueFlow("CNY",400000,NodeLcoalBank!!.info.legalIdentities[0])
-        val result1:Future<String> = NodeLcoalBank!!.startFlow(fiatCurrencyIssueFlow1)
+        //put share into Local Custody
+        val createAndIssueFlow = CreateAndIssueDRToken(
+            NodeLcoalBank!!.info.legalIdentities[0],
+            NodeDRBank!!.info.legalIdentities[0],
+            BigDecimal(10.0),
+            Amount.parseCurrency("64.73 CNY"),
+            Amount.parseCurrency("64.73 GBP"),
+            10,
+            "CNE000001R84",
+            1)
+
+        val future1: Future<String> = NodeDRBank!!.startFlow(createAndIssueFlow)
         network!!.runNetwork()
-        val resultString1 = result1.get()
+        val resultString1 = future1.get()
         println(resultString1)
 
-        //put money into DRBank
-        val fiatCurrencyIssueFlow2 = FiatCurrencyIssueFlow("GBP",400000,NodeDRBank!!.info.legalIdentities[0])
-        val result2:Future<String> = NodeDRBank!!.startFlow(fiatCurrencyIssueFlow2)
+        //Move Share
+        val moveDRFlow = MoveDRFlow(
+            "CNE000001R84",NodeLcoalBank!!.info.legalIdentities[0],1)
+        val future: Future<String> = NodeDRBank!!.startFlow(moveDRFlow)
         network!!.runNetwork()
-        val resultString2 = result2.get()
-        println(resultString2)
-
-        //Do the exchange
-        val fxexchangeflow1 = FXexchange(NodeLcoalBank!!.info.legalIdentities[0],NodeDRBank!!.info.legalIdentities[0],Noded!!.info.legalIdentities[0],
-            Amount.parseCurrency("5 GBP"),"CNY"
-        )
-        val result3:Future<String> = NodeDRBank!!.startFlow(fxexchangeflow1)
-        network!!.runNetwork()
-        val resultString3 = result3.get()
-        println(resultString3)
-
-        val storedFungibleTokenb4 = NodeLcoalBank!!.services.vaultService.queryBy(FungibleToken::class.java).states
-        println(storedFungibleTokenb4)
-
-        val storedFungibleTokenb5 = NodeDRBank!!.services.vaultService.queryBy(FungibleToken::class.java).states
-        println(storedFungibleTokenb5)
-
-
+        val resultString = future.get()
+        println(resultString)
 
     }
 }

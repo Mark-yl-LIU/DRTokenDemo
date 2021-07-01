@@ -5,10 +5,7 @@ import co.paralleluniverse.fibers.Suspendable
 import com.r3.corda.lib.tokens.contracts.utilities.withNotary
 import com.r3.corda.lib.tokens.contracts.commands.EvolvableTokenTypeCommand
 import com.r3.corda.lib.tokens.workflows.flows.rpc.CreateEvolvableTokens
-import net.corda.core.contracts.Amount
-import net.corda.core.contracts.Command
-import net.corda.core.contracts.UniqueIdentifier
-import net.corda.core.contracts.requireSingleCommand
+import net.corda.core.contracts.*
 import net.corda.core.flows.FinalityFlow
 import net.corda.core.flows.FlowLogic
 import net.corda.core.flows.InitiatingFlow
@@ -16,6 +13,7 @@ import net.corda.core.flows.StartableByRPC
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.identity.Party
 import net.corda.core.node.services.IdentityService
+import net.corda.core.node.services.queryBy
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
@@ -40,7 +38,7 @@ import java.util.ArrayList
 @InitiatingFlow
 @StartableByRPC
 
-class GetSharePrice(val Symbol: String) : FlowLogic<SignedTransaction>() {
+class GetSharePrice(val Symbol: String) : FlowLogic<String>() {
 
     companion object {
         object SET_UP : ProgressTracker.Step("Initialising flows.")
@@ -63,7 +61,7 @@ class GetSharePrice(val Symbol: String) : FlowLogic<SignedTransaction>() {
 
 
     @Suspendable
-    override fun call(): SignedTransaction {
+    override fun call(): String {
         progressTracker.currentStep = SET_UP
 
         // Obtain a reference from a notary we wish to use.
@@ -77,7 +75,7 @@ class GetSharePrice(val Symbol: String) : FlowLogic<SignedTransaction>() {
         // val notary = serviceHub.networkMapCache.getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB")) // METHOD 2
 
         // In Corda v1.0, we identify oracles we want to use by name.
-        val oracleName = CordaX500Name("Oracle_Stock", "ShenZhen", "CN")
+        val oracleName = CordaX500Name("Oracle_share", "ShenZhen", "CN")
         val oracle = serviceHub.networkMapCache.getNodeByLegalName(oracleName)?.legalIdentities?.first()
             ?: throw IllegalArgumentException("Requested oracle $oracleName not found on network.")
 
@@ -85,18 +83,20 @@ class GetSharePrice(val Symbol: String) : FlowLogic<SignedTransaction>() {
         val sharepriceRequestedFromOracle = subFlow(QuerySharePrice(oracle, Symbol))
 
         progressTracker.currentStep = BUILDING_THE_TX
-        val shareState = ShareState(Symbol,sharepriceRequestedFromOracle,UniqueIdentifier(),2,listOf(oracle))
+        val shareState = ShareState(Symbol,sharepriceRequestedFromOracle,UniqueIdentifier(),0,listOf(oracle))
+        val shareStateRef: StateAndRef<ShareState> = serviceHub.vaultService.queryBy<ShareState>().states[0]
 
 
         // By listing the oracle here, we make the oracle a required signer.
         val sharepriceCmdRequiredSigners = listOf(oracle.owningKey, ourIdentity.owningKey)
-        val command = Command(ShareContract.Commands.Create(Symbol,sharepriceRequestedFromOracle), sharepriceCmdRequiredSigners)
+        val command = Command(ShareContract.Commands.Update(Symbol,sharepriceRequestedFromOracle), sharepriceCmdRequiredSigners)
         val builder = TransactionBuilder(notary)
             .addOutputState(shareState, ShareContract.Share_CONTRACT_ID)
             .addCommand(command)
 
         progressTracker.currentStep = VERIFYING_THE_TX
         builder.verify(serviceHub)
+
 
         progressTracker.currentStep = WE_SIGN
         val ptx = serviceHub.signInitialTransaction(builder)
@@ -113,9 +113,10 @@ class GetSharePrice(val Symbol: String) : FlowLogic<SignedTransaction>() {
 
         val oracleSignature = subFlow(SignSharePrice(oracle, ftx))
         val stx = ptx.withAdditionalSignature(oracleSignature)
+        val amountstring = sharepriceRequestedFromOracle.toString()
 
         progressTracker.currentStep = FINALISING
-        return subFlow(FinalityFlow(stx, listOf()))
+        return "Share $Symbol Price $amountstring updated "
     }
 }
 

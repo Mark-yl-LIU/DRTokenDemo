@@ -22,7 +22,7 @@ class ShareContract : EvolvableTokenContract(),Contract {
 
     interface Commands :CommandData {
         class Create(val Symbol: String, val Price: Amount<Currency>) : Commands
-        class Update : Commands
+        class Update(val Symbol: String, val Price: Amount<Currency>) : Commands
     }
 
 //    class View(val Symbol: String, val Price: Amount<Currency>) : CommandData
@@ -52,6 +52,7 @@ class ShareContract : EvolvableTokenContract(),Contract {
             //Validations when a stock is updated, ie. AnnounceDividend (UpdateEvolvableToken)
             "Stock Symbol must not be changed.".using(input.symbol == output.symbol)
             "Stock symbol must not be empty".using(input.symbol.isEmpty())
+            "Stock Price should be greater than zero".using(input.price.quantity>0)
         }
     }
 

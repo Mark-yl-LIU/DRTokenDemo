@@ -1,71 +1,142 @@
 package com.example.webserver
 
+import net.corda.core.contracts.Amount
+import net.corda.core.contracts.StateAndRef
+import net.corda.core.contracts.TransactionVerificationException
+import net.corda.core.messaging.CordaRPCOps
+import net.corda.core.utilities.OpaqueBytes
+import net.corda.finance.flows.CashIssueAndPaymentFlow
+import net.corda.finance.workflows.getCashBalance
 import org.slf4j.LoggerFactory
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.http.MediaType.APPLICATION_JSON_VALUE
+import org.springframework.web.bind.annotation.*
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.*
 
+//Corda pack
+import com.r3.corda.lib.tokens.contracts.states.EvolvableTokenType
 import net.corda.example.flows.*
 import net.corda.example.states.*
 
-import com.r3.corda.lib.tokens.contracts.states.FungibleToken
-import com.r3.corda.lib.tokens.contracts.states.EvolvableTokenType
 
-//Corda Main
-import net.corda.core.contracts.StateAndRef
-import net.corda.core.identity.CordaX500Name
-import net.corda.core.messaging.startTrackedFlow
-import net.corda.core.messaging.vaultQueryBy
-import net.corda.core.utilities.getOrThrow
-import org.springframework.http.MediaType
-import org.springframework.http.ResponseEntity
-import net.corda.finance.workflows.getCashBalance
-import net.corda.finance.contracts.asset.Cash
-
-val SERVICE_NAMES = listOf("Notary", "Network Map Service")
-
-/**
- * Define your API endpoints here.
- */
 @RestController
-@RequestMapping("/api/example/") // The paths for HTTP requests are relative to this base path.
-class Controller(rpc: NodeRPCConnection) {
+@RequestMapping("/api/example") // The paths for HTTP requests are relative to this base path.
+class Controller() {
+
+    @Autowired lateinit var InvestorProxy: CordaRPCOps
+
+    @Autowired lateinit var DR_BrokerProxy: CordaRPCOps
+
+    @Autowired lateinit var Local_BrokerProxy: CordaRPCOps
+
+    @Autowired lateinit var Custody_BankProxy: CordaRPCOps
+
+    @Autowired lateinit var Depository_BankProxy: CordaRPCOps
+
+    @Autowired lateinit var Oracle_FXProxy: CordaRPCOps
+
+    @Autowired lateinit var Orcale_StockProxy: CordaRPCOps
+
+    @Autowired
+    @Qualifier("InvestorProxy")
+    lateinit var proxy: CordaRPCOps
 
     companion object {
         private val logger = LoggerFactory.getLogger(RestController::class.java)
     }
 
-    private val myLegalName = rpc.proxy.nodeInfo().legalIdentities.first().name
-    private val proxy = rpc.proxy
-
-    @GetMapping(value = [ "me" ], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun whoami() = mapOf("me" to myLegalName)
-
-    @GetMapping(value = [ "peers" ], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getPeers(): Map<String, List<CordaX500Name>> {
-        val nodeInfo = proxy.networkMapSnapshot()
-        return mapOf("peers" to nodeInfo
-            .map { it.legalIdentities.first().name }
-            //filter out myself, notary and eventual network map started by driver
-            .filter { it.organisation !in (SERVICE_NAMES + myLegalName.organisation) })
+    @GetMapping(value = [ "asset/list" ], produces = [ APPLICATION_JSON_VALUE ])
+    fun getAssetList() : APIResponse<List<StateAndRef<EvolvableTokenType>>> {
+        return APIResponse.success(proxy.vaultQuery(EvolvableTokenType::class.java).states)
     }
 
-    @GetMapping(value = [ "money" ], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getAccount() : ResponseEntity<List<StateAndRef<net.corda.finance.contracts.asset.Cash.State>>> {
-        return ResponseEntity.ok(proxy.vaultQueryBy<Cash.State>().states)
+    @PostMapping(value = ["asset/create"])
+    fun createAsset(@RequestBody assetForm: Forms.AssetForm): APIResponse<String> {
+//        return try {
+//            proxy.startFlowDynamic(
+//                    CreateAssetFlow::class.java,
+//                    assetForm.title,
+//                    assetForm.description,
+//                    assetForm.imageUrl
+//            ).returnValue.get()
+//
+            return  APIResponse.success("Account ${assetForm.title} Created")
+//        } catch (e: Exception) {
+//            handleError(e)
+//        }
     }
 
-    @GetMapping(value = [ "holding" ], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getHolding(): ResponseEntity<List<StateAndRef<EvolvableTokenType>>>  {
-        val myholding = proxy.vaultQueryBy<EvolvableTokenType>().states
-        return ResponseEntity.ok(myholding)
+    @PostMapping(value = ["create"])
+    fun createAuction(@RequestBody auctionForm: Forms.CreateAuctionForm): APIResponse<String> {
+        return try {
+//            proxy.startFlowDynamic(
+//                    CreateAuctionFlow::class.java,
+//                    Amount.parseCurrency("${auctionForm.basePrice} USD"),
+//                    UUID.fromString(auctionForm.assetId),
+//                    LocalDateTime.parse(auctionForm.deadline, DateTimeFormatter.ofPattern("dd-MM-yyyy hh:mm:ss a"))
+//            ).returnValue.get()
+            APIResponse.success("Auction ${auctionForm.assetId} Created")
+        } catch (e: Exception) {
+            handleError(e)
+        }
     }
 
+    @PostMapping(value = ["issueCash"])
+    fun issueCash(@RequestBody issueCashForm: Forms.IssueCashForm): APIResponse<String> {
+        return try {
+            proxy.startFlowDynamic(
+                    CashIssueAndPaymentFlow::class.java,
+                    Amount.parseCurrency("${issueCashForm.amount} USD"),
+                    OpaqueBytes("PartyA".toByteArray()),
+                    proxy.partiesFromName(issueCashForm.party!!, false).iterator().next(),
+                    false,
+                    proxy.notaryIdentities().firstOrNull()
+            ).returnValue.get()
+            APIResponse.success("Cash issued. Amount: ${issueCashForm.amount}")
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
 
+    @GetMapping(value = [ "getCashBalance" ])
+    fun getCashBalance(): APIResponse<String> {
+        return try {
+            var amount = proxy.getCashBalance(Currency.getInstance("")).quantity
 
+            if(amount >= 100L)
+                amount /= 100L
 
-    @GetMapping(value = ["/templateendpoint"], produces = ["text/plain"])
-    private fun templateendpoint(): String {
-        return "Define an endpoint here."
+            APIResponse.success("Balance: $amount")
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
+    @PostMapping(value = ["switch-party/{party}"])
+    fun switchParty(@PathVariable party:String): APIResponse<String> {
+        when (party) {
+            "Investor"-> proxy = InvestorProxy
+            "DR_Broker"-> proxy = DR_BrokerProxy
+            "Local_Broker"-> proxy = Local_BrokerProxy
+            "Custody_Bank"-> proxy = Custody_BankProxy
+            "Depository_Bank"-> proxy = Depository_BankProxy
+            "Oracle_FX"-> proxy = Oracle_FXProxy
+            "Orcale_Stock"-> proxy = Orcale_StockProxy
+            else -> return APIResponse.error("Unrecognised Party")
+        }
+        return getCashBalance()
+    }
+
+    private fun handleError(e: Exception): APIResponse<String> {
+        logger.error("RequestError", e)
+        return when (e) {
+            is TransactionVerificationException.ContractRejection ->
+                APIResponse.error(e.cause?.message ?: e.message!!)
+            else ->
+                APIResponse.error(e.message!!)
+        }
     }
 }

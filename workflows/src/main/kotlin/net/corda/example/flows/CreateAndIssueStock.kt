@@ -6,6 +6,7 @@ import com.r3.corda.lib.tokens.contracts.utilities.issuedBy
 import com.r3.corda.lib.tokens.contracts.utilities.withNotary
 import com.r3.corda.lib.tokens.workflows.flows.rpc.CreateEvolvableTokens
 import com.r3.corda.lib.tokens.workflows.flows.rpc.IssueTokens
+import com.r3.corda.lib.tokens.contracts.FungibleTokenContract
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.contracts.Amount
 import net.corda.core.flows.FlowLogic

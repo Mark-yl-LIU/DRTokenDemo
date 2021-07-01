@@ -24,7 +24,7 @@ import net.corda.example.states.DRTokenState
 import net.corda.example.states.ShareState
 
 
-class MoveShareTokenTest {
+class MoveShareTokenTestMoveShareTokenTest {
     private var network: MockNetwork? = null
     private var NodeDRBroker: StartedMockNode? = null
     private var NodeLcoalBank: StartedMockNode? = null

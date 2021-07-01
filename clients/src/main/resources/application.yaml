@@ -1,0 +1,23 @@
+Investor:
+  host: localhost:10012
+
+DR_Broker:
+  host: localhost:10006
+
+Local_Broker:
+  host: localhost:10009
+
+Custody_Bank:
+  host: localhost:10024
+
+Depository_Bank:
+  host: localhost:10021
+
+Oracle_FX:
+  host: localhost:10018
+
+Orcale_Stock:
+  host: localhost:10015
+
+server.port: 8085
+

@@ -3,6 +3,7 @@ package net.corda.example.contracts
 import net.corda.example.states.DRTokenState
 import net.corda.testing.node.MockServices
 import org.junit.Test
+import java.math.BigDecimal
 
 
 class DRTokenStateTests {
@@ -15,6 +16,6 @@ class DRTokenStateTests {
         // Does the field exist?
         DRTokenState::class.java.getDeclaredField("fx_rate")
         // Is the field of the correct type?
-        assert(DRTokenState::class.java.getDeclaredField("fx_rate").type == Double::class.java)
+        assert(DRTokenState::class.java.getDeclaredField("fx_rate").type == BigDecimal::class.java)
     }
 }

@@ -1,4 +1,7 @@
 apply plugin: 'org.springframework.boot'
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+
 
 sourceSets {
     main {
@@ -14,6 +17,7 @@ dependencies {
     compile "$corda_release_group:corda-jackson:$corda_release_version"
 
     compile "$corda_release_group:corda-finance-workflows:$corda_release_version"
+    compile "$corda_release_group:corda-finance-contracts:$corda_release_version"
 
     // CorDapp dependencies.
     compile project(":contracts")
@@ -38,7 +42,7 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
 
 
 springBoot {
-    mainClassName = "com.example.webserver.ServerKt"
+    mainClassName = "com.example.webserver.Server"
 }
 
 /* The Client is the communication channel between the external and the node. This task will help you immediately
@@ -54,15 +58,14 @@ task runTemplateClient(type: JavaExec, dependsOn: assemble) {
 /* This task will start the springboot server that connects to your node (via RPC connection). All of the http requests
  * are in the Controller file. You can leave the Server.kt and NodeRPCConnection.kt file untouched for your use.
  */
-task runBroker1Server(type: JavaExec, dependsOn: assemble) {
+task runWebServer(type: JavaExec, dependsOn: assemble) {
     classpath = sourceSets.main.runtimeClasspath
-    main = 'com.example.webserver.ServerKt'
-    args '--server.port=50050', '--config.rpc.host=localhost', '--config.rpc.port=10006', '--config.rpc.username=user1', '--config.rpc.password=test'
+    main = 'com.example.webserver.Starter'//    args '--server.port=50050', '--config.rpc.host=localhost', '--config.rpc.port=10006', '--config.rpc.username=user1', '--config.rpc.password=test'
 }
 
 task runBroker2Server(type: JavaExec, dependsOn: assemble) {
     classpath = sourceSets.main.runtimeClasspath
-    main = 'com.example.webserver.ServerKt'
+    main = 'com.example.webserver.Starter'
     args '--server.port=50051', '--config.rpc.host=localhost', '--config.rpc.port=10009', '--config.rpc.username=user1', '--config.rpc.password=test'
 }
 
