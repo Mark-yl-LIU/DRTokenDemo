@@ -62,27 +62,3 @@ task runWebServer(type: JavaExec, dependsOn: assemble) {
     classpath = sourceSets.main.runtimeClasspath
     main = 'com.example.webserver.Starter'//    args '--server.port=50050', '--config.rpc.host=localhost', '--config.rpc.port=10006', '--config.rpc.username=user1', '--config.rpc.password=test'
 }
-
-task runBroker2Server(type: JavaExec, dependsOn: assemble) {
-    classpath = sourceSets.main.runtimeClasspath
-    main = 'com.example.webserver.Starter'
-    args '--server.port=50051', '--config.rpc.host=localhost', '--config.rpc.port=10009', '--config.rpc.username=user1', '--config.rpc.password=test'
-}
-
-task runInvestorServer(type: JavaExec, dependsOn: assemble) {
-    classpath = sourceSets.main.runtimeClasspath
-    main = 'com.example.webserver.ServerKt'
-    args '--server.port=50052', '--config.rpc.host=localhost', '--config.rpc.port=10012', '--config.rpc.username=user1', '--config.rpc.password=test'
-}
-
-task runDepositaryServer(type: JavaExec, dependsOn: assemble) {
-    classpath = sourceSets.main.runtimeClasspath
-    main = 'com.example.webserver.ServerKt'
-    args '--server.port=50053', '--config.rpc.host=localhost', '--config.rpc.port=10021', '--config.rpc.username=user1', '--config.rpc.password=test'
-}
-
-task runCustodyServer(type: JavaExec, dependsOn: assemble) {
-    classpath = sourceSets.main.runtimeClasspath
-    main = 'com.example.webserver.ServerKt'
-    args '--server.port=50054', '--config.rpc.host=localhost', '--config.rpc.port=10024', '--config.rpc.username=user1', '--config.rpc.password=test'
-}

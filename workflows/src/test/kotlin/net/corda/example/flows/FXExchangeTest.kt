@@ -66,14 +66,14 @@ class FXExchangeTest {
 
         //put money into Local Custody
         val fiatCurrencyIssueFlow1 = FiatCurrencyIssueFlow("CNY",400000,NodeLcoalBank!!.info.legalIdentities[0])
-        val result1:Future<String> = NodeLcoalBank!!.startFlow(fiatCurrencyIssueFlow1)
+        val result1:Future<String> = Noded!!.startFlow(fiatCurrencyIssueFlow1)
         network!!.runNetwork()
         val resultString1 = result1.get()
         println(resultString1)
 
         //put money into DRBank
         val fiatCurrencyIssueFlow2 = FiatCurrencyIssueFlow("GBP",400000,NodeDRBank!!.info.legalIdentities[0])
-        val result2:Future<String> = NodeDRBank!!.startFlow(fiatCurrencyIssueFlow2)
+        val result2:Future<String> = Noded!!.startFlow(fiatCurrencyIssueFlow2)
         network!!.runNetwork()
         val resultString2 = result2.get()
         println(resultString2)

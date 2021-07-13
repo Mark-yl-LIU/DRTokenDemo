@@ -199,7 +199,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
 
     //Local Broker1
     node {
-        name "O=Broker2,L=ShenZhen,C=CN"
+        name "O=Broker2,L=ShenZhen,C=CN,CN=Local_Broker"
         p2pPort 10008
         rpcSettings {
             address("localhost:10009")
@@ -210,7 +210,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
 
     //Investor
     node {
-        name "O=Investor,L=London,C=GB"
+        name "O=Investor,L=London,C=GB,CN=Investor"
         p2pPort 10011
         rpcSettings {
             address("localhost:10012")
@@ -243,7 +243,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
 
     //Local Depositary
     node {
-        name "O=Depositary,L=London,C=GB"
+        name "O=Depositary,L=London,C=GB,CN=Depository_Bank"
         p2pPort 10020
         rpcSettings {
             address("localhost:10021")
@@ -254,7 +254,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
 
     //Local Custody Bank
     node {
-        name "O=Custody,L=Shanghai,C=CN"
+        name "O=Custody,L=Shanghai,C=CN,CN=Custody_Bank"
         p2pPort 10023
         rpcSettings {
             address("localhost:10024")

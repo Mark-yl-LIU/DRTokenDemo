@@ -1,5 +1,7 @@
 package com.example.webserver
 
+import java.math.BigDecimal
+
 class Forms {
 
     class BidForm {
@@ -19,8 +21,9 @@ class Forms {
     }
 
     class IssueCashForm {
+        var currency: String = "GBP"
+        var amount: Long = 0
         var party: String? = null
-        var amount: Int = 0
     }
 
     class AssetForm {
@@ -28,5 +31,23 @@ class Forms {
         var title: String? = null
         var description: String? = null
     }
+
+    class DRTokenForm {
+        var drbroker: String? = null
+        var localBroker: String? = null
+        var drbank: String? = null
+        var localBank: String? = null
+        var ordShareSymbol: String? = null
+        var ordShareRate: Long = 0
+        var quantity : Long = 0
+    }
+
+    class ShareForm {
+        var symbo_ISIN: String? = null
+        var amount: BigDecimal = BigDecimal(0.0)
+        var currency: String? = null
+        var quantity: Long = 0
+    }
+
 
 }

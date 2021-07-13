@@ -4,12 +4,10 @@ package net.corda.example.flows
 import co.paralleluniverse.fibers.Suspendable
 import com.r3.corda.lib.tokens.contracts.utilities.withNotary
 import com.r3.corda.lib.tokens.contracts.commands.EvolvableTokenTypeCommand
-import com.r3.corda.lib.tokens.workflows.flows.rpc.CreateEvolvableTokens
+import com.r3.corda.lib.tokens.workflows.flows.evolvable.UpdateEvolvableTokenFlow
+import com.r3.corda.lib.tokens.workflows.internal.flows.distribution.UpdateDistributionListFlow
 import net.corda.core.contracts.*
-import net.corda.core.flows.FinalityFlow
-import net.corda.core.flows.FlowLogic
-import net.corda.core.flows.InitiatingFlow
-import net.corda.core.flows.StartableByRPC
+import net.corda.core.flows.*
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.identity.Party
 import net.corda.core.node.services.IdentityService
@@ -75,7 +73,7 @@ class GetSharePrice(val Symbol: String) : FlowLogic<String>() {
         // val notary = serviceHub.networkMapCache.getNotary(CordaX500Name.parse("O=Notary,L=London,C=GB")) // METHOD 2
 
         // In Corda v1.0, we identify oracles we want to use by name.
-        val oracleName = CordaX500Name("Oracle_share", "ShenZhen", "CN")
+        val oracleName = CordaX500Name("Oracle_Stock", "ShenZhen", "CN")
         val oracle = serviceHub.networkMapCache.getNodeByLegalName(oracleName)?.legalIdentities?.first()
             ?: throw IllegalArgumentException("Requested oracle $oracleName not found on network.")
 
@@ -86,37 +84,19 @@ class GetSharePrice(val Symbol: String) : FlowLogic<String>() {
         val shareState = ShareState(Symbol,sharepriceRequestedFromOracle,UniqueIdentifier(),0,listOf(oracle))
         val shareStateRef: StateAndRef<ShareState> = serviceHub.vaultService.queryBy<ShareState>().states[0]
 
-
-        // By listing the oracle here, we make the oracle a required signer.
-        val sharepriceCmdRequiredSigners = listOf(oracle.owningKey, ourIdentity.owningKey)
-        val command = Command(ShareContract.Commands.Update(Symbol,sharepriceRequestedFromOracle), sharepriceCmdRequiredSigners)
-        val builder = TransactionBuilder(notary)
-            .addOutputState(shareState, ShareContract.Share_CONTRACT_ID)
-            .addCommand(command)
+        val sstx = subFlow(UpdateEvolvableTokenFlow(shareStateRef, shareState, listOf(), listOf()))
 
         progressTracker.currentStep = VERIFYING_THE_TX
-        builder.verify(serviceHub)
-
 
         progressTracker.currentStep = WE_SIGN
-        val ptx = serviceHub.signInitialTransaction(builder)
 
         progressTracker.currentStep = ORACLE_SIGNS
-        // For privacy reasons, we only want to expose to the oracle any commands of type `Prime.Create`
-        // that require its signature.
-        val ftx = ptx.buildFilteredTransaction(Predicate {
-            when (it) {
-                is Command<*> -> oracle.owningKey in it.signers && it.value is ShareContract.Commands.Create
-                else -> false
-            }
-        })
-
-        val oracleSignature = subFlow(SignSharePrice(oracle, ftx))
-        val stx = ptx.withAdditionalSignature(oracleSignature)
-        val amountstring = sharepriceRequestedFromOracle.toString()
 
         progressTracker.currentStep = FINALISING
-        return "Share $Symbol Price $amountstring updated "
+        subFlow(UpdateDistributionListFlow(sstx))
+
+        val pricestr = sharepriceRequestedFromOracle.toString()
+
+        return "Share ${Symbol} Price updated as ${pricestr} . Tx is ${sstx.id}"
     }
 }
-

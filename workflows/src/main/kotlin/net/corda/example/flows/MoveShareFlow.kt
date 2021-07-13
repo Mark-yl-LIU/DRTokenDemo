@@ -29,17 +29,20 @@ class MoveShareFlow (
     @Suspendable
     override fun call():String {
         //get house states on ledger with uuid as input tokenId
-        val stateAndRef = serviceHub.vaultService.queryBy<ShareState>()
-            .states.filter { it.state.data.symbol.equals(symbol) }[0]
+        val stateAndRefs = serviceHub.vaultService.queryBy<ShareState>()
+            .states.filter { it.state.data.symbol.equals(symbol) }
+        println(stateAndRefs)
+        val stateAndRef=stateAndRefs.last()
 
         //get the RealEstateEvolvableTokenType object
         val evolvableTokenType = stateAndRef.state.data
-
+        println(evolvableTokenType)
         //get the pointer pointer to the house
         val tokenPointer: TokenPointer<ShareState> = evolvableTokenType.toPointer(evolvableTokenType.javaClass)
 
         //specify how much amount to issue to holder
         val amount:Amount<TokenType> = Amount(quantity,tokenPointer)
+        println(amount)
         val stx = subFlow(MoveFungibleTokens(amount,holder))
 
         return "Moved $quantity $symbol token(s) to ${holder.name.organisation}"+

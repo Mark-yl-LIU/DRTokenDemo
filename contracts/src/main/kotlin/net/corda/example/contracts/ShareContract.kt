@@ -51,7 +51,6 @@ class ShareContract : EvolvableTokenContract(),Contract {
         requireThat{
             //Validations when a stock is updated, ie. AnnounceDividend (UpdateEvolvableToken)
             "Stock Symbol must not be changed.".using(input.symbol == output.symbol)
-            "Stock symbol must not be empty".using(input.symbol.isEmpty())
             "Stock Price should be greater than zero".using(input.price.quantity>0)
         }
     }
