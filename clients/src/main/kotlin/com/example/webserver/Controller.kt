@@ -215,18 +215,18 @@ class Controller() {
             println(step5resu)
 
             //6. Raise the DR Token
-//            val step6resu = Depository_BankProxy.startFlowDynamic(
-//                BuyDRToken::class.java,
-//                proxy.partiesFromName(drTokenForm.drbroker.toString(), false).iterator().next(),
-//                proxy.partiesFromName("Broker2", false).iterator().next(),
-//                proxy.partiesFromName("Depositary", false).iterator().next(),
-//                proxy.partiesFromName("Oracle_FX", false).iterator().next(),
-//                proxy.partiesFromName("Oracle_Stock", false).iterator().next(),
-//                drTokenForm.ordShareSymbol,
-//                drTokenForm.ordShareRate,
-//                drTokenForm.quantity
-//            ).returnValue.get()
-//            println(step6resu)
+            val step6resu = Depository_BankProxy.startFlowDynamic(
+                BuyDRToken::class.java,
+                proxy.partiesFromName(drTokenForm.drbroker.toString(), false).iterator().next(),
+                proxy.partiesFromName("Broker2", false).iterator().next(),
+                proxy.partiesFromName("Depositary", false).iterator().next(),
+                proxy.partiesFromName("Oracle_FX", false).iterator().next(),
+                proxy.partiesFromName("Oracle_Stock", false).iterator().next(),
+                drTokenForm.ordShareSymbol,
+                drTokenForm.ordShareRate,
+                drTokenForm.quantity
+            ).returnValue.get()
+            println(step6resu)
 
             //7. Move the DR Token to investor
             val step7resu = Depository_BankProxy.startFlowDynamic(
